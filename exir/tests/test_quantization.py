@@ -8,9 +8,12 @@
 
 import unittest
 
+try:
+    import executorch.kernels.portable  # noqa: F401
+except ModuleNotFoundError:
+    pass
 import torch
 import torchvision
-
 from executorch.backends.xnnpack.quantizer.xnnpack_quantizer import (
     get_symmetric_quantization_config,
     XNNPACKQuantizer,
@@ -31,9 +34,6 @@ from torchao.quantization.pt2e.quantize_pt2e import (
     convert_pt2e,
     prepare_pt2e,
 )
-
-# load executorch out variant ops
-torch.ops.load_library("//executorch/kernels/quantized:custom_ops_generated_lib")
 
 
 class TestQuantization(unittest.TestCase):
