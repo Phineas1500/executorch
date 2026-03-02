@@ -31,11 +31,19 @@ VoxtralRealtimeRunner::VoxtralRealtimeRunner(
     const std::string& model_path,
     const std::string& tokenizer_path,
     const std::string& preprocessor_path,
+    const std::string& data_path,
     bool warmup) {
   // Load the main model (.pte with audio_encoder, text_decoder,
   // token_embedding methods). Mmap avoids copying the file into memory.
+  // For CUDA backend, data_path points to the .ptd file with compiled kernels.
   ET_LOG(Info, "Loading model from: %s", model_path.c_str());
-  model_ = std::make_unique<Module>(model_path, Module::LoadMode::Mmap);
+  if (!data_path.empty()) {
+    ET_LOG(Info, "Loading data from: %s", data_path.c_str());
+    model_ =
+        std::make_unique<Module>(model_path, data_path, Module::LoadMode::Mmap);
+  } else {
+    model_ = std::make_unique<Module>(model_path, Module::LoadMode::Mmap);
+  }
   auto load_error = model_->load();
   ET_CHECK_MSG(load_error == Error::Ok, "Failed to load model.");
 
