@@ -129,8 +129,8 @@ Result<uint64_t> MultimodalRunner::prefill(
 Error MultimodalRunner::decode_from_token(
     uint64_t cur_token,
     const GenerationConfig& config,
-    std::function<void(const std::string&)> wrapped_callback,
-    std::function<void(const Stats&)> stats_callback) {
+    const std::function<void(const std::string&)>& wrapped_callback,
+    const std::function<void(const Stats&)>& stats_callback) {
   stats_->first_token_ms = time_in_ms();
   stats_->prompt_eval_end_ms = time_in_ms();
   stats_->num_prompt_tokens = pos_;
