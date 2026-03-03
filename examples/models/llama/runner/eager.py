@@ -43,6 +43,7 @@ class EagerLlamaRunner(LlamaRunner):
         )
         manager: LLMEdgeManager = _prepare_for_llama_export(llm_config)
         self.model = manager.model.eval().to(device=self.device)
+        self.enable_dynamic_shape = llm_config.model.enable_dynamic_shape
 
     def forward(
         self,

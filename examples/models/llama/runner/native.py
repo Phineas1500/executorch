@@ -44,6 +44,13 @@ class NativeLlamaRunner(LlamaRunner):
             vocab_size=params["vocab_size"],
         )
         self.model = _load_for_executorch(args.pte)
+        try:
+            self.enable_dynamic_shape = bool(
+                self.model.run_method("enable_dynamic_shape")[0]
+            )
+        except Exception:
+            # Keep default behavior when metadata method is unavailable.
+            pass
 
     def forward(
         self,
