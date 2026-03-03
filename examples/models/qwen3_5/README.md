@@ -3,10 +3,37 @@
 - `full_attention` layers use gated full attention.
 - `linear_attention` layers use Gated DeltaNet with internal recurrent state.
 
-This first bring-up is **fp32 + static shape** (`enable_dynamic_shape=False`).
+This bring-up supports **fp32 + static shape** and **q8da4w + static shape**
+(`enable_dynamic_shape=False`).
 Currently supported text model sizes: `0.8B`, `2B`, `4B`.
 
 ## Export
+### Quantized (q8da4w)
+```bash
+python -m extension.llm.export.export_llm \
+  --config examples/models/qwen3_5/config/qwen3_5_xnnpack_q8da4w.yaml \
+  +base.model_class="qwen3_5_0_8b" \
+  +base.params="examples/models/qwen3_5/config/0_8b_config.json" \
+  +export.output_name="qwen3_5_0_8b_q8da4w.pte"
+```
+
+```bash
+python -m extension.llm.export.export_llm \
+  --config examples/models/qwen3_5/config/qwen3_5_xnnpack_q8da4w.yaml \
+  +base.model_class="qwen3_5_2b" \
+  +base.params="examples/models/qwen3_5/config/2b_config.json" \
+  +export.output_name="qwen3_5_2b_q8da4w.pte"
+```
+
+```bash
+python -m extension.llm.export.export_llm \
+  --config examples/models/qwen3_5/config/qwen3_5_xnnpack_q8da4w.yaml \
+  +base.model_class="qwen3_5_4b" \
+  +base.params="examples/models/qwen3_5/config/4b_config.json" \
+  +export.output_name="qwen3_5_4b_q8da4w.pte"
+```
+
+### FP32
 ```bash
 python -m extension.llm.export.export_llm \
   --config examples/models/qwen3_5/config/qwen3_5_xnnpack_fp32.yaml \
@@ -53,7 +80,6 @@ python -m executorch.examples.models.llama.runner.native \
 
 ## Notes
 - Current path targets CPU/XNNPACK export validation and runner compatibility.
-- `q8da4w` quantization for Qwen3.5 is intentionally deferred to a follow-up.
 - Dynamic-shape export is not enabled yet for Qwen3.5 DeltaNet layers in this path; keep `enable_dynamic_shape=False`.
 - For static-shape exports, `runner.native` falls back to sequential token prefill for multi-token prompts.
 - Default metadata uses Qwen3.5 special token ids: `get_bos_id=248045`, `get_eos_ids=[248046,248044]`.

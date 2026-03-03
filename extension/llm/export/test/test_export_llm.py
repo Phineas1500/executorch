@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from executorch.extension.llm.export.export_llm import (
@@ -149,6 +150,38 @@ backend:
             )
         finally:
             os.unlink(config_file)
+
+    @patch("executorch.extension.llm.export.export_llm.export_llama")
+    def test_qwen3_5_q8da4w_config(self, mock_export_llama: MagicMock) -> None:
+        """Test loading the checked-in Qwen3.5 q8da4w export config."""
+        repo_root = Path(__file__).resolve().parents[4]
+        config_file = (
+            repo_root
+            / "examples/models/qwen3_5/config/qwen3_5_xnnpack_q8da4w.yaml"
+        )
+        params_file = repo_root / "examples/models/qwen3_5/config/0_8b_config.json"
+
+        test_argv = [
+            "export_llm.py",
+            "--config",
+            str(config_file),
+            "base.model_class=qwen3_5_0_8b",
+            f"base.params={params_file}",
+            "export.max_seq_length=1",
+            "export.max_context_length=1",
+        ]
+        with patch.object(sys, "argv", test_argv):
+            main()
+
+        mock_export_llama.assert_called_once()
+        called_config = mock_export_llama.call_args[0][0]
+        self.assertEqual(called_config.base.model_class.value, "qwen3_5_0_8b")
+        self.assertEqual(called_config.quantization.qmode.value, "8da4w")
+        self.assertEqual(called_config.quantization.embedding_quantize, "8,0")
+        self.assertFalse(called_config.model.use_sdpa_with_kv_cache)
+        self.assertFalse(called_config.model.enable_dynamic_shape)
+        self.assertTrue(called_config.backend.xnnpack.enabled)
+        self.assertTrue(called_config.backend.xnnpack.extended_ops)
 
 
 if __name__ == "__main__":
