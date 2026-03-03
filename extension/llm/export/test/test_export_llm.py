@@ -165,8 +165,8 @@ backend:
             "export_llm.py",
             "--config",
             str(config_file),
-            "base.model_class=qwen3_5_0_8b",
-            f"base.params={params_file}",
+            "+base.model_class=qwen3_5_0_8b",
+            f"+base.params={params_file}",
             "export.max_seq_length=1",
             "export.max_context_length=1",
         ]
