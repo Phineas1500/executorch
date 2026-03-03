@@ -175,8 +175,14 @@ backend:
 
         mock_export_llama.assert_called_once()
         called_config = mock_export_llama.call_args[0][0]
-        self.assertEqual(called_config.base.model_class.value, "qwen3_5_0_8b")
-        self.assertEqual(called_config.quantization.qmode.value, "8da4w")
+        model_class = called_config.base.model_class
+        qmode = called_config.quantization.qmode
+        model_class_value = (
+            model_class.value if hasattr(model_class, "value") else model_class
+        )
+        qmode_value = qmode.value if hasattr(qmode, "value") else qmode
+        self.assertEqual(model_class_value, "qwen3_5_0_8b")
+        self.assertEqual(qmode_value, "8da4w")
         self.assertEqual(called_config.quantization.embedding_quantize, "8,0")
         self.assertFalse(called_config.model.use_sdpa_with_kv_cache)
         self.assertFalse(called_config.model.enable_dynamic_shape)
