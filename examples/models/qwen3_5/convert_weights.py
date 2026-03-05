@@ -40,32 +40,9 @@ _QWEN_3_5_TO_META = {
 }
 
 
-_IGNORED_UNMAPPED_PREFIXES = (
-    "mtp.",
-    "model.visual.",
-    "visual.",
-)
-
-_IGNORED_UNMAPPED_SUBSTRINGS = (
-    ".vision_",
-    ".visual.",
-)
-
 _IGNORED_UNMAPPED_SUFFIXES = (
     "rotary_emb.inv_freq",
 )
-
-
-def _should_ignore_unmapped_key(key: str, normalized_key: str) -> bool:
-    candidates = (key, normalized_key)
-    for candidate in candidates:
-        if any(candidate.startswith(prefix) for prefix in _IGNORED_UNMAPPED_PREFIXES):
-            return True
-        if any(token in candidate for token in _IGNORED_UNMAPPED_SUBSTRINGS):
-            return True
-        if any(candidate.endswith(suffix) for suffix in _IGNORED_UNMAPPED_SUFFIXES):
-            return True
-    return False
 
 
 def _load_checkpoint_from_safetensors(input_dir: str) -> Dict:
@@ -126,12 +103,15 @@ def qwen_3_5_to_meta(state_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Ten
                 "model.language_model.", "model.", 1
             )
 
-        # Ignore non-language-model keys up front.
-        if not (
-            normalized_key.startswith("model.") or normalized_key.startswith("lm_head.")
+        # Ignore non-text-model keys up front.
+        if not normalized_key.startswith(
+            (
+                "model.layers.",
+                "model.embed_tokens.",
+                "model.norm.",
+                "lm_head.",
+            )
         ):
-            if _should_ignore_unmapped_key(key, normalized_key):
-                continue
             continue
 
         # Legacy packed tensors (older checkpoints):
@@ -147,7 +127,7 @@ def qwen_3_5_to_meta(state_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Ten
         try:
             new_key = get_mapped_key(normalized_key, _QWEN_3_5_TO_META)
         except Exception as err:
-            if _should_ignore_unmapped_key(key, normalized_key):
+            if normalized_key.endswith(_IGNORED_UNMAPPED_SUFFIXES):
                 continue
             raise ValueError(
                 f"Unexpected checkpoint key not mapped for Qwen3.5 export: {key}"
