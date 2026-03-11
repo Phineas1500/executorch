@@ -28,6 +28,7 @@ except ImportError:
     VgfQuantizer = None
 
 from executorch.examples.models.llama.export_llama_lib import (
+    _get_xnnpack_partitioners,
     _export_llama,
     _prepare_for_llama_export,
     build_args_parser,
@@ -138,6 +139,58 @@ class ExportLlamaLibTest(unittest.TestCase):
             ]
 
             self.assertEqual(len(recurrent_nodes), 2)
+
+    def test_tiny_qwen35_q8da4w_lowers_to_xnnpack(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            params_path = Path(temp_dir) / "tiny_qwen35.json"
+            params_path.write_text(json.dumps(self._make_tiny_qwen35_params()))
+
+            parser = build_args_parser()
+            args = parser.parse_args(
+                [
+                    "--model",
+                    "qwen3_5_0_8b",
+                    "--params",
+                    str(params_path),
+                    "--use_kv_cache",
+                    "--disable_dynamic_shape",
+                    "--max_seq_length",
+                    "8",
+                    "--max_context_length",
+                    "8",
+                    "--xnnpack",
+                    "--xnnpack-extended-ops",
+                    "--quantization_mode",
+                    "8da4w",
+                    "--embedding-quantize",
+                    "8,0",
+                    "--dtype-override",
+                    "fp32",
+                ]
+            )
+
+            llm_config = LlmConfig.from_args(args)
+            _, quantizers, _ = get_quantizer_and_quant_params(llm_config)
+
+            builder = _prepare_for_llama_export(llm_config).export()
+            builder.run_canonical_optimizations()
+            builder = builder.pt2e_quantize(quantizers)
+            builder = builder.to_edge_transform_and_lower(
+                _get_xnnpack_partitioners(llm_config)
+            )
+
+            graph_module = builder.edge_manager.exported_program().graph_module
+            delegation_info = get_delegation_info(graph_module)
+
+            self.assertIn("executorch_call_delegate", graph_module.code)
+            self.assertIn(
+                "torchao_quantize_affine_default",
+                delegation_info.delegation_by_operator,
+            )
+            self.assertIn(
+                "torchao_dequantize_affine_default",
+                delegation_info.delegation_by_operator,
+            )
 
     @unittest.skipUnless(HAS_ARM_BACKEND, "ARM backend not available")
     def test_get_quantizer_and_quant_params_returns_tosa_quantizer(self):
